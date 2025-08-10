@@ -1,8 +1,11 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ethers } from 'ethers';
 import { AuthDto, NonceDto } from './dto/auth.dto';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +14,8 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   generateNonce(nonceDto: NonceDto): { nonce: string } {
@@ -65,17 +70,42 @@ export class AuthService {
         throw new UnauthorizedException('Signature verification failed');
       }
 
-      // Check if user is allowed (optional - you can remove this for any user)
-      const allowedUser = this.configService.get<string>('ALLOWED_USER');
-      if (allowedUser && recoveredAddress.toLowerCase() !== allowedUser.toLowerCase()) {
-        throw new UnauthorizedException('User not authorized');
+      // Check if user exists in database and is active
+      let user = await this.userRepository.findOne({
+        where: { 
+          walletAddress: recoveredAddress,
+          isActive: true 
+        }
+      });
+
+      if (!user) {
+        // Try with case-insensitive search as fallback
+        const userCaseInsensitive = await this.userRepository
+          .createQueryBuilder('user')
+          .where('LOWER(user.walletAddress) = LOWER(:address)', { address: recoveredAddress })
+          .andWhere('user.isActive = :isActive', { isActive: true })
+          .getOne();
+        
+        if (!userCaseInsensitive) {
+          throw new UnauthorizedException('User not found or inactive');
+        }
+        
+        // Use the case-insensitive result
+        user = userCaseInsensitive;
       }
 
       // Remove used nonce
       this.nonces.delete(addressLower);
 
-      // Generate JWT token
-      const payload = { address: recoveredAddress, sub: recoveredAddress };
+      // Generate JWT token with user information
+      const payload = { 
+        address: recoveredAddress, 
+        sub: recoveredAddress,
+        userId: user.id,
+        role: user.role,
+        nom: user.nom,
+        prenom: user.prenom
+      };
       const access_token = this.jwtService.sign(payload);
 
       return { access_token };
@@ -99,8 +129,27 @@ export class AuthService {
     }
   }
 
-  validateUser(address: string): any {
-    // This method can be used for additional user validation if needed
-    return { address };
+  async validateUser(address: string): Promise<User | null> {
+    try {
+      let user = await this.userRepository.findOne({
+        where: { 
+          walletAddress: address,
+          isActive: true 
+        }
+      });
+      
+      if (!user) {
+        // Try with case-insensitive search as fallback
+        user = await this.userRepository
+          .createQueryBuilder('user')
+          .where('LOWER(user.walletAddress) = LOWER(:address)', { address })
+          .andWhere('user.isActive = :isActive', { isActive: true })
+          .getOne();
+      }
+      
+      return user;
+    } catch (error) {
+      return null;
+    }
   }
 }
