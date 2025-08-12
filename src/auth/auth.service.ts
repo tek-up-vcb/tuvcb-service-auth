@@ -3,9 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
 import { ethers } from 'ethers';
 import { AuthDto, NonceDto } from './dto/auth.dto';
 import { User } from '../entities/user.entity';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -14,6 +16,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    private httpService: HttpService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
@@ -150,6 +153,36 @@ export class AuthService {
       return user;
     } catch (error) {
       return null;
+    }
+  }
+
+  async getUserProfile(userId: string): Promise<any> {
+    try {
+      // Récupérer les informations depuis le service users
+      const response = await firstValueFrom(
+        this.httpService.get(`http://tuvcb-service-users:3002/api/users/${userId}`)
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user profile from users service:', error.message);
+      
+      // Fallback: récupérer depuis la base de données locale
+      const user = await this.userRepository.findOne({
+        where: { id: userId, isActive: true }
+      });
+      
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      return {
+        id: user.id,
+        nom: user.nom,
+        prenom: user.prenom,
+        role: user.role,
+        walletAddress: user.walletAddress,
+        isActive: user.isActive
+      };
     }
   }
 }

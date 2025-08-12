@@ -19,16 +19,29 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
+  async getProfile(@Request() req) {
     console.log('Profile request - JWT payload:', req.user);
-    return {
-      id: req.user.userId,
-      address: req.user.address,
-      role: req.user.role,
-      nom: req.user.nom,
-      prenom: req.user.prenom,
-      authenticated: true,
-    };
+    
+    try {
+      // Récupérer les informations complètes depuis le service users
+      const userProfile = await this.authService.getUserProfile(req.user.userId);
+      
+      return {
+        ...userProfile,
+        authenticated: true,
+      };
+    } catch (error) {
+      // Fallback avec les informations du JWT
+      return {
+        id: req.user.userId,
+        address: req.user.address,
+        role: req.user.role,
+        nom: req.user.nom,
+        prenom: req.user.prenom,
+        walletAddress: req.user.address,
+        authenticated: true,
+      };
+    }
   }
 
   @Get('health')
