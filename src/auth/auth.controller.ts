@@ -20,8 +20,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
+    console.log('Profile request - JWT payload:', req.user);
     return {
+      id: req.user.userId,
       address: req.user.address,
+      role: req.user.role,
+      nom: req.user.nom,
+      prenom: req.user.prenom,
       authenticated: true,
     };
   }

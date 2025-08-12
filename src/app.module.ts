@@ -18,7 +18,7 @@ import { User } from './entities/user.entity';
       port: parseInt(process.env.DB_PORT || '5432'),
       username: process.env.DB_USERNAME || 'tuvcb_user',
       password: process.env.DB_PASSWORD || 'tuvcb_password',
-      database: process.env.DB_DATABASE || 'tuvcb_users',
+      database: process.env.DB_DATABASE || 'tuvcb_main',
       entities: [User],
       synchronize: false, // Les tables sont gérées par le service users
       logging: process.env.NODE_ENV === 'development',
