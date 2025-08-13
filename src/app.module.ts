@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { User } from './entities/user.entity';
 
 @Module({
@@ -28,6 +29,7 @@ import { User } from './entities/user.entity';
       limit: 10, // 10 requests per minute
     }]),
     AuthModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
