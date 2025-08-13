@@ -100,14 +100,16 @@ export class AuthService {
       // Remove used nonce
       this.nonces.delete(addressLower);
 
-      // Generate JWT token with user information
+      // Generate JWT token with user information from the shared database
       const payload = { 
         address: recoveredAddress, 
         sub: recoveredAddress,
-        userId: user.id,
+        userId: user.id, // Use the actual ID from the shared database
+        id: user.id,     // Add 'id' field as well for consistency
         role: user.role,
         nom: user.nom,
-        prenom: user.prenom
+        prenom: user.prenom,
+        walletAddress: user.walletAddress
       };
       const access_token = this.jwtService.sign(payload);
 
@@ -181,7 +183,8 @@ export class AuthService {
         prenom: user.prenom,
         role: user.role,
         walletAddress: user.walletAddress,
-        isActive: user.isActive
+        isActive: user.isActive,
+        address: user.walletAddress // Add address field for compatibility
       };
     }
   }
